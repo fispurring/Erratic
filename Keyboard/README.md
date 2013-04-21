@@ -1,4 +1,4 @@
 To use:
 
-    KeyboardDispatcher::sharedDispatcher()->setEnabled(keyboardListener);
+    KeyboardDispatcher::sharedDispatcher()->setEnabled(true);
     KeyboardDispatcher::sharedDispatcher()->addListener(keyboardListener);
