@@ -1,3 +1,5 @@
+Keyboard support for Windows
+
 To use:
 
     KeyboardDispatcher::sharedDispatcher()->setEnabled(true);
