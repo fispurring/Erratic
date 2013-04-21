@@ -1,0 +1,27 @@
+Open and build the project CCXWPacker.You'll get the target file CCXWPacker.exe.  
+To pack:  
+
+	CCXWPacker.exe <Resources folder>  
+
+You'll get the resources package named "FolderName.ccxrc".
+
+To Load Resources:  
+
+Copy the files,which in CCXWLoader folder,to your cocos2d-x project.  
+Example Code:  
+
+	#include "CCXWLoader.h"
+	
+	//your code
+	
+	//Load CCImage from Resources file
+	CCImage *image=ccxw_loadImage("PackagePath.ccxrc","ImageName.png");
+	CCTexture2D *texture=new CCTexture2D();
+	texture->initWithImage(image);
+	CCSprite *player=CCSprite::createWithTexture(texture,CCRectMake(0,0,27,40));
+	
+	//Load CCTexture2D from Resources file
+	CTexture2D *texture=ccxw_loadTexture("PackagePath.ccxrc","ImageName.png");
+	CCSprite *player=CCSprite::createWithTexture(texture,CCRectMake(0,0,27,40));
+	//your code
+
