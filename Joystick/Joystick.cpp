@@ -2,88 +2,155 @@
 
 #define CIRCLE_VERTEX_COUNT 360
 
-Joystick::Joystick():_delegate(NULL),_state(jsNone),_type(jtImage),_normal(NULL),_highlighted(NULL),_target(NULL)
+Joystick::Joystick():
+    _delegate(NULL),
+    _state(jsNone),
+    _bgNormal(NULL),
+    _bgHighlighted(NULL),
+    _touchedJoystick(NULL),
+    _movedJoystick(NULL),
+    _maxResponseDistance(3000),
+    _maxMoveDistance(100),
+    _simpleDrawEnabled(false)
 {
+    _responseRect=CCRectMake(0, 0, CCDirector::sharedDirector()->getWinSize().width/3, CCDirector::sharedDirector()->getWinSize().height/3);
 }
 
-void Joystick::initImageJoystick(CCNode *normal,JoystickDelegate *delegate)
+void Joystick::initWithImages(CCNode *touchedJoystick,CCNode *movedJoystick)
 {
-    initImageJoystick(normal, NULL, delegate);
+    initWithImages(touchedJoystick, movedJoystick, NULL);
 }
-void Joystick::initImageJoystick(CCNode *normal,CCNode *highlighted,JoystickDelegate *delegate)
+void Joystick::initWithImages(CCNode *touchedJoystick,CCNode *movedJoystick,CCNode *bgNormal)
 {
-    initImageJoystick(normal, highlighted, NULL, delegate);
-}
-void Joystick::initImageJoystick(CCNode *normal,CCNode *highlighted,CCNode *target,JoystickDelegate *delegate)
-{
-    _normal=normal;
-    _highlighted=highlighted;
-    _target=target;
-    _delegate=delegate;
-    
-    _normal->setPosition(ccp(0, 0));
-    _normal->setVisible(true);
-    this->addChild(_normal);
-    _highlighted->setPosition(ccp(0, 0));
-    _highlighted->setVisible(false);
-    this->addChild(_highlighted);
-    _target->setPosition(ccp(0, 0));
-    _target->setVisible(false);
-    this->addChild(_target);
-    
-    _maxDistance=std::min(_normal->getContentSize().width/2, _normal->getContentSize().height/2);
-    
-    CCDirector::sharedDirector()->getTouchDispatcher()->addStandardDelegate(this, 0);
+    initWithImages(touchedJoystick,movedJoystick,bgNormal,NULL);
 }
 
-void Joystick::initDrawableJoystick(CCRect reactionRect,JoystickDelegate *delegate)
+void Joystick::initWithImages(CCNode *touchedJoystick,CCNode *movedJoystick,CCNode *bgNormal,CCNode *bgHighlighted)
 {
-    _type=jtDrawable;
-    _delegate=delegate;
-    _reactionRect=reactionRect;
-    _maxDistance=CCDirector::sharedDirector()->getWinSize().height/4;
+    _touchedJoystick=touchedJoystick;
+    _movedJoystick=movedJoystick;
+    _bgNormal=bgNormal;
+    _bgHighlighted=bgHighlighted;
     
-    m_pShaderProgram=CCShaderCache::sharedShaderCache()->programForKey(kCCShader_PositionColor);
-    m_pShaderProgram->retain();
-    CCDirector::sharedDirector()->getTouchDispatcher()->addStandardDelegate(this, 0);
-}
-
-void Joystick::ccTouchesBegan(CCSet *pTouches, CCEvent *pEvent)
-{
-    CCTouch *pTouch=(CCTouch*)pTouches->anyObject();
-    if (_reactionRect.containsPoint(this->getParent()->convertToNodeSpace(pTouch->getLocation()))) {
-        _state=jsTouched;
-        _touchedPoint=pTouch->getLocation();
-        if (_type==jtImage) {
-            if (_normal) {
-                _normal->setVisible(false);
-            }
-            if (_highlighted) {
-                _highlighted->setVisible(true);
-            }
-            if (_target) {
-                _target->setVisible(true);
-                _target->setPosition(this->convertToNodeSpace(pTouch->getLocation()));
-            }
-        }
+    if(_touchedJoystick) {
+        _touchedJoystick->setPosition(ccp(0, 0));
+        _touchedJoystick->setVisible(false);
+        this->addChild(_touchedJoystick);
+    }
+    if (_movedJoystick) {
+        _movedJoystick->setPosition(ccp(0,0));
+        _movedJoystick->setVisible(false);
+        this->addChild(_movedJoystick);
+    }
+    if (_bgNormal) {
+        _bgNormal->setPosition(ccp(0, 0));
+        _bgNormal->setVisible(true);
+        this->addChild(_bgNormal);
+    }
+    if (_bgHighlighted) {
+        _bgHighlighted->setPosition(ccp(0, 0));
+        _bgHighlighted->setVisible(false);
+        this->addChild(_bgHighlighted);
     }
 }
 
-void Joystick::ccTouchesMoved(CCSet *pTouches, CCEvent *pEvent)
+void Joystick::EnableSimpleDraw()
+{
+    if (!_simpleDrawEnabled) {
+        _simpleDrawEnabled=true;
+        m_pShaderProgram=CCShaderCache::sharedShaderCache()->programForKey(kCCShader_PositionColor);
+        m_pShaderProgram->retain();
+    }
+}
+
+void Joystick::DisableSimpleDraw()
+{
+    if (_simpleDrawEnabled) {
+        _simpleDrawEnabled=false;
+        m_pShaderProgram->release();
+    }
+}
+
+void Joystick::setDelegate(JoystickDelegate *delegate)
+{
+    _delegate=delegate;
+}
+
+bool Joystick::ccTouchBegan(CCTouch *pTouch, CCEvent *pEvent)
+{
+    CCNode *parent=this->getParent();
+    if (!parent) {
+        return false;
+    }
+    
+    if (_responseRect.containsPoint(pTouch->getLocation())) {
+        _state=jsTouched;
+        _touchedPoint=pTouch->getLocation();
+        if (_touchedJoystick) {
+            _touchedJoystick->setVisible(true);
+            _touchedJoystick->setPosition(this->convertToNodeSpace(pTouch->getLocation()));
+        }
+        if (_movedJoystick) {
+            _movedJoystick->setVisible(false);
+        }
+        if (_bgNormal) {
+            _bgNormal->setVisible(false);
+        }
+        if (_bgHighlighted) {
+            _bgHighlighted->setVisible(true);
+        }
+        return true;
+    }
+    return false;
+}
+
+void Joystick::ccTouchMoved(CCTouch *pTouch, CCEvent *pEvent)
 {
     if (_state==jsTouched||_state==jsTouchMoved) {
-        CCTouch *pTouch=(CCTouch*)pTouches->anyObject();
-        if (ccpDistance(_touchedPoint, pTouch->getLocation())<_maxDistance) {
+        if (ccpDistance(_touchedPoint, pTouch->getLocation())<_maxResponseDistance) {
             _vector=ccpSub(pTouch->getLocation(),_touchedPoint);
             if (_delegate) {
-                _delegate->onRock(_vector);
+                float angle=CC_RADIANS_TO_DEGREES(ccpToAngle(_vector));
+                ysDirection direction=ysdLeft;
+                if ((angle>=157.5&&angle<=180)||(angle>=-180&&angle<=-157.5)) {
+                    direction=ysdLeft;
+                }
+                else if (angle<=157.5&&angle>=112.5) {
+                    direction=ysdLeftUp;
+                }
+                else if (angle>=67.5&&angle<=112.5) {
+                    direction=ysdUp;
+                }
+                else if (angle>=22.5&&angle<=67.5) {
+                    direction=ysdRightUp;
+                }
+                else if(angle>=-22.5&&angle<=22.5) {
+                    direction=ysdRight;
+                }
+                else if (angle>=-67.5&&angle<=-22.5) {
+                    direction=ysdRightDown;
+                }
+                else if (angle>=-112.5&&angle<=-67.5) {
+                    direction=ysdDown;
+                }
+                else if (angle>=-157.5&&angle<=112.5) {
+                    direction=ysdLeftDown;
+                }
+                _delegate->onRock(direction,_vector);
             }
             _state=jsTouchMoved;
             
-            if (_type==jtImage) {
-                if (_target) {
-                    _target->setPosition(this->convertToNodeSpace(pTouch->getLocation()));
+            if (_touchedJoystick) {
+                _touchedJoystick->setVisible(false);
+            }
+            if (_movedJoystick) {
+                _movedJoystick->setVisible(true);
+                CCPoint point=pTouch->getLocation();
+                if (ccpDistance(_touchedPoint, pTouch->getLocation())>_maxMoveDistance) {
+                    point=ccpMult(ccpNormalize(pTouch->getLocation()),_maxMoveDistance);
                 }
+                _movedJoystick->setPosition(this->convertToNodeSpace(point));
+                _movedJoystick->setRotation(CC_RADIANS_TO_DEGREES(ccpToAngle(ccp(_vector.y,_vector.x))));
             }
         }
         else {
@@ -91,49 +158,50 @@ void Joystick::ccTouchesMoved(CCSet *pTouches, CCEvent *pEvent)
             if (_delegate) {
                 _delegate->onRockEnd();
             }
-            if (_type==jtImage) {
-                if (_normal) {
-                    _normal->setVisible(true);
-                }
-                if (_highlighted) {
-                    _highlighted->setVisible(false);
-                }
-                if (_target) {
-                    _target->setVisible(false);
-                }
+            if (_bgNormal) {
+                _bgNormal->setVisible(true);
+            }
+            if (_bgHighlighted) {
+                _bgHighlighted->setVisible(false);
+            }
+            if (_touchedJoystick) {
+                _touchedJoystick->setVisible(false);
             }
         }
     }
 }
 
-void Joystick::ccTouchesEnded(CCSet *pTouches, CCEvent *pEvent)
+void Joystick::ccTouchEnded(CCTouch *pTouch, CCEvent *pEvent)
 {
     if (_state!=jsNone) {
         _state=jsNone;
         if (_delegate) {
             _delegate->onRockEnd();
         }
-        if (_normal) {
-            _normal->setVisible(true);
+        if (_touchedJoystick) {
+            _touchedJoystick->setVisible(false);
         }
-        if (_highlighted) {
-            _highlighted->setVisible(false);
+        if (_movedJoystick) {
+            _movedJoystick->setVisible(false);
         }
-        if (_target) {
-            _target->setVisible(false);
+        if (_bgNormal) {
+            _bgNormal->setVisible(true);
+        }
+        if (_bgHighlighted) {
+            _bgHighlighted->setVisible(false);
         }
     }
     
 }
 
-void Joystick::ccTouchesCancelled(CCSet *pTouches, CCEvent *pEvent)
+void Joystick::ccTouchCancelled(CCTouch *pTouch, CCEvent *pEvent)
 {
-    ccTouchesEnded(pTouches, pEvent);
+    ccTouchEnded(pTouch, pEvent);
 }
 
 void Joystick::draw()
 {
-    if (_type==jtDrawable) {
+    if (_simpleDrawEnabled) {
         CC_NODE_DRAW_SETUP();
         switch (_state) {
             case jsTouched:
@@ -185,5 +253,19 @@ void Joystick::drawArrow()
     glVertexAttribPointer(kCCVertexAttrib_Position, 2, GL_FLOAT, GL_FALSE, 0, vertices);
     glVertexAttribPointer(kCCVertexAttrib_Color, 4, GL_FLOAT, GL_FALSE, 0, colors);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    
+}
+
+void Joystick::onEnter()
+{
+    CCNode::onEnter();
+    CCDirector::sharedDirector()->getTouchDispatcher()->addTargetedDelegate(this, 1, true);
+}
+
+void Joystick::AdjustResponseRectToBackground(float padding)
+{
+    if (_bgNormal) {
+        CCPoint point=this->convertToWorldSpace(ccp(_bgNormal->boundingBox().getMinX(),_bgNormal->boundingBox().getMinY()));
+        CCSize size=_bgNormal->getContentSize();
+        _responseRect=CCRectMake(point.x-padding, point.y-padding, size.width+2*padding, size.height+2*padding);
+    }
 }
