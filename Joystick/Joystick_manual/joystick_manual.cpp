@@ -29,6 +29,10 @@ public:
     void setJSDelegate(JSObject *sender)
     {
         m_pJSDelegate=sender;
+        JS_AddObjectRoot(ScriptingCore::getInstance()->getGlobalContext(), &m_pJSDelegate);
+    }
+    ~JSB_JoystickDelegate() {
+        JS_RemoveObjectRoot(ScriptingCore::getInstance()->getGlobalContext(), &m_pJSDelegate);
     }
 private:
     JSObject* m_pJSDelegate;

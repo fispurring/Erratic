@@ -21,11 +21,6 @@ EnableSimpleDraw : function () {},
 draw : function () {},
 
 /**
- * @method onEnter
- */
-onEnter : function () {},
-
-/**
  * @method getMaxMovedDistance
  * @return A value converted from C/C++ "float"
  */
@@ -50,6 +45,12 @@ ccTouchBegan : function () {},
  * @param {cocos2d::CCEvent*}
  */
 ccTouchEnded : function () {},
+
+/**
+ * @method setEnabled
+ * @param {bool}
+ */
+setEnabled : function () {},
 
 /**
  * @method ccTouchCancelled

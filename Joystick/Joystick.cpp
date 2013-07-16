@@ -11,7 +11,8 @@ Joystick::Joystick():
     _movedJoystick(NULL),
     _maxResponseDistance(3000),
     _maxMoveDistance(100),
-    _simpleDrawEnabled(false)
+    _simpleDrawEnabled(false),
+    _enabled(true)
 {
     _responseRect=CCRectMake(0, 0, CCDirector::sharedDirector()->getWinSize().width/3, CCDirector::sharedDirector()->getWinSize().height/3);
 }
@@ -78,6 +79,10 @@ void Joystick::setDelegate(JoystickDelegate *delegate)
 
 bool Joystick::ccTouchBegan(CCTouch *pTouch, CCEvent *pEvent)
 {
+    if (!_enabled) {
+        return false;
+    }
+    
     CCNode *parent=this->getParent();
     if (!parent) {
         return false;
@@ -106,6 +111,10 @@ bool Joystick::ccTouchBegan(CCTouch *pTouch, CCEvent *pEvent)
 
 void Joystick::ccTouchMoved(CCTouch *pTouch, CCEvent *pEvent)
 {
+    if (!_enabled) {
+        return;
+    }
+
     if (_state==jsTouched||_state==jsTouchMoved) {
         if (ccpDistance(_touchedPoint, pTouch->getLocation())<_maxResponseDistance) {
             _vector=ccpSub(pTouch->getLocation(),_touchedPoint);
@@ -173,6 +182,9 @@ void Joystick::ccTouchMoved(CCTouch *pTouch, CCEvent *pEvent)
 
 void Joystick::ccTouchEnded(CCTouch *pTouch, CCEvent *pEvent)
 {
+    if (!_enabled) {
+        return;
+    }
     if (_state!=jsNone) {
         _state=jsNone;
         if (_delegate) {
@@ -267,5 +279,31 @@ void Joystick::AdjustResponseRectToBackground(float padding)
         CCPoint point=this->convertToWorldSpace(ccp(_bgNormal->boundingBox().getMinX(),_bgNormal->boundingBox().getMinY()));
         CCSize size=_bgNormal->getContentSize();
         _responseRect=CCRectMake(point.x-padding, point.y-padding, size.width+2*padding, size.height+2*padding);
+    }
+}
+
+void Joystick::setEnabled(bool enabled)
+{
+    if (_enabled!=enabled) {
+        _enabled=enabled;
+        if (!_enabled) {
+            _state=jsNone;
+            if(_touchedJoystick) {
+                _touchedJoystick->setPosition(ccp(0, 0));
+                _touchedJoystick->setVisible(false);
+            }
+            if (_movedJoystick) {
+                _movedJoystick->setPosition(ccp(0,0));
+                _movedJoystick->setVisible(false);
+            }
+            if (_bgNormal) {
+                _bgNormal->setPosition(ccp(0, 0));
+                _bgNormal->setVisible(true);
+            }
+            if (_bgHighlighted) {
+                _bgHighlighted->setPosition(ccp(0, 0));
+                _bgHighlighted->setVisible(false);
+            }
+        }
     }
 }

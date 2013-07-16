@@ -43,6 +43,7 @@ class Joystick:public CCNode,public CCTargetedTouchDelegate {
     float _maxResponseDistance;
     float _maxMoveDistance;
     bool _simpleDrawEnabled;
+    bool _enabled;
     void drawCircle();
     void drawArrow();
 public:
@@ -67,6 +68,7 @@ public:
     virtual void ccTouchCancelled(CCTouch *pTouch, CCEvent *pEvent);
     virtual void draw();
     virtual void onEnter();
+    void setEnabled(bool enabled);
 };
 
 #endif

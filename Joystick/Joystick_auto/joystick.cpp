@@ -11,6 +11,7 @@ static JSBool dummy_constructor(JSContext *cx, uint32_t argc, jsval *vp) {
 	HASH_FIND_INT(_js_global_type_ht, &typeId, p);
 	assert(p);
 	JSObject *_tmp = JS_NewObject(cx, p->jsclass, p->proto, p->parentProto);
+    JS_AddObjectRoot(cx, &_tmp);
 	js_proxy_t *pp;
 	JS_NEW_PROXY(pp, cobj, _tmp);
 	JS_SET_RVAL(cx, vp, OBJECT_TO_JSVAL(_tmp));
@@ -66,21 +67,6 @@ JSBool js_joystick_Joystick_draw(JSContext *cx, uint32_t argc, jsval *vp)
 	JSB_PRECONDITION2( cobj, cx, JS_FALSE, "Invalid Native Object");
 	if (argc == 0) {
 		cobj->draw();
-		JS_SET_RVAL(cx, vp, JSVAL_VOID);
-		return JS_TRUE;
-	}
-
-	JS_ReportError(cx, "wrong number of arguments: %d, was expecting %d", argc, 0);
-	return JS_FALSE;
-}
-JSBool js_joystick_Joystick_onEnter(JSContext *cx, uint32_t argc, jsval *vp)
-{
-	JSObject *obj = JS_THIS_OBJECT(cx, vp);
-	js_proxy_t *proxy; JS_GET_NATIVE_PROXY(proxy, obj);
-	Joystick* cobj = (Joystick *)(proxy ? proxy->ptr : NULL);
-	JSB_PRECONDITION2( cobj, cx, JS_FALSE, "Invalid Native Object");
-	if (argc == 0) {
-		cobj->onEnter();
 		JS_SET_RVAL(cx, vp, JSVAL_VOID);
 		return JS_TRUE;
 	}
@@ -188,6 +174,26 @@ JSBool js_joystick_Joystick_ccTouchEnded(JSContext *cx, uint32_t argc, jsval *vp
 	}
 
 	JS_ReportError(cx, "wrong number of arguments: %d, was expecting %d", argc, 2);
+	return JS_FALSE;
+}
+JSBool js_joystick_Joystick_setEnabled(JSContext *cx, uint32_t argc, jsval *vp)
+{
+	jsval *argv = JS_ARGV(cx, vp);
+	JSBool ok = JS_TRUE;
+	JSObject *obj = JS_THIS_OBJECT(cx, vp);
+	js_proxy_t *proxy; JS_GET_NATIVE_PROXY(proxy, obj);
+	Joystick* cobj = (Joystick *)(proxy ? proxy->ptr : NULL);
+	JSB_PRECONDITION2( cobj, cx, JS_FALSE, "Invalid Native Object");
+	if (argc == 1) {
+		JSBool arg0;
+		ok &= JS_ValueToBoolean(cx, argv[0], &arg0);
+		JSB_PRECONDITION2(ok, cx, JS_FALSE, "Error processing arguments");
+		cobj->setEnabled(arg0);
+		JS_SET_RVAL(cx, vp, JSVAL_VOID);
+		return JS_TRUE;
+	}
+
+	JS_ReportError(cx, "wrong number of arguments: %d, was expecting %d", argc, 1);
 	return JS_FALSE;
 }
 JSBool js_joystick_Joystick_ccTouchCancelled(JSContext *cx, uint32_t argc, jsval *vp)
@@ -521,6 +527,7 @@ extern JSObject *jsb_CCNode_prototype;
 
 void js_joystick_Joystick_finalize(JSFreeOp *fop, JSObject *obj) {
     CCLOGINFO("jsbindings: finalizing JS object %p (Joystick)", obj);
+    JS_RemoveObjectRoot(ScriptingCore::getInstance()->getGlobalContext(), &obj);
     js_proxy_t* nproxy;
     js_proxy_t* jsproxy;
     JS_GET_NATIVE_PROXY(jsproxy, obj);
@@ -566,11 +573,11 @@ void js_register_joystick_Joystick(JSContext *cx, JSObject *global) {
 		JS_FN("getResponseRect", js_joystick_Joystick_getResponseRect, 0, JSPROP_PERMANENT | JSPROP_ENUMERATE),
 		JS_FN("EnableSimpleDraw", js_joystick_Joystick_EnableSimpleDraw, 0, JSPROP_PERMANENT | JSPROP_ENUMERATE),
 		JS_FN("draw", js_joystick_Joystick_draw, 0, JSPROP_PERMANENT | JSPROP_ENUMERATE),
-		JS_FN("onEnter", js_joystick_Joystick_onEnter, 0, JSPROP_PERMANENT | JSPROP_ENUMERATE),
 		JS_FN("getMaxMovedDistance", js_joystick_Joystick_getMaxMovedDistance, 0, JSPROP_PERMANENT | JSPROP_ENUMERATE),
 		JS_FN("DisableSimpleDraw", js_joystick_Joystick_DisableSimpleDraw, 0, JSPROP_PERMANENT | JSPROP_ENUMERATE),
 		JS_FN("ccTouchBegan", js_joystick_Joystick_ccTouchBegan, 2, JSPROP_PERMANENT | JSPROP_ENUMERATE),
 		JS_FN("ccTouchEnded", js_joystick_Joystick_ccTouchEnded, 2, JSPROP_PERMANENT | JSPROP_ENUMERATE),
+		JS_FN("setEnabled", js_joystick_Joystick_setEnabled, 1, JSPROP_PERMANENT | JSPROP_ENUMERATE),
 		JS_FN("ccTouchCancelled", js_joystick_Joystick_ccTouchCancelled, 2, JSPROP_PERMANENT | JSPROP_ENUMERATE),
 		JS_FN("ccTouchMoved", js_joystick_Joystick_ccTouchMoved, 2, JSPROP_PERMANENT | JSPROP_ENUMERATE),
 		JS_FN("setResponseRect", js_joystick_Joystick_setResponseRect, 1, JSPROP_PERMANENT | JSPROP_ENUMERATE),
@@ -617,7 +624,6 @@ void js_register_joystick_Joystick(JSContext *cx, JSObject *global) {
 }
 
 void register_all_joystick(JSContext* cx, JSObject* obj) {
-
 	js_register_joystick_Joystick(cx, obj);
 }
 
